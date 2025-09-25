@@ -547,3 +547,19 @@
     </script>
 </body>
 </html>
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <title>Sağ tık engelleme</title>
+</head>
+<body>
+  <p>Bu sayfada sağ tık devre dışı.</p>
+
+  <script>
+    document.addEventListener('contextmenu', function(e) {
+      e.preventDefault();
+    });
+  </script>
+</body>
+</html>
