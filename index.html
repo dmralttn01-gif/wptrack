@@ -1,565 +1,555 @@
 <!DOCTYPE html>
 <html lang="tr">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>WhatsApp Webhook Track</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
-    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
-        body { font-family: 'Inter', sans-serif; }
-        .location-circle-outer {
-            width: 28px;
-            height: 28px;
-            border-radius: 50%;
-            border: 3px solid #06b6d4;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 0 10px 2px rgba(6, 182, 212, 0.7);
-            animation: pulse-ring 1.5s infinite;
-        }
-        .location-circle-inner {
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            background-color: #06b6d4;
-        }
-        @keyframes pulse-ring {
-            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(6, 182, 212, 0.7); }
-            70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(6, 182, 212, 0); }
-            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(6, 182, 212, 0); }
-        }
-        .signal-bar {
-            @apply flex space-x-0.5 items-end h-4;
-        }
-        .signal-bar div {
-            @apply w-1.5 bg-slate-500 rounded-sm transition-all duration-300;
-        }
-        .signal-bar .active {
-            @apply bg-cyan-500;
-        }
-        /* Özel uyarı kutusu stili */
-        #alertModal {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            z-index: 10000;
-            background: #1e293b;
-            padding: 24px;
-            border-radius: 12px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-            width: 300px;
-            text-align: center;
-            border: 1px solid #334155;
-        }
-    </style>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>WhatsApp Webhook Track</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        .location-circle-outer {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            border: 3px solid #06b6d4;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 0 10px 2px rgba(6, 182, 212, 0.7);
+            animation: pulse-ring 1.5s infinite;
+        }
+        .location-circle-inner {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background-color: #06b6d4;
+        }
+        @keyframes pulse-ring {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(6, 182, 212, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(6, 182, 212, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(6, 182, 212, 0); }
+        }
+        .signal-bar {
+            @apply flex space-x-0.5 items-end h-4;
+        }
+        .signal-bar div {
+            @apply w-1.5 bg-slate-500 rounded-sm transition-all duration-300;
+        }
+        .signal-bar .active {
+            @apply bg-cyan-500;
+        }
+        /* Özel uyarı kutusu stili */
+        #alertModal {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 10000;
+            background: #1e293b;
+            padding: 24px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            width: 300px;
+            text-align: center;
+            border: 1px solid #334155;
+        }
+    </style>
 </head>
 <body class="bg-slate-950 text-slate-50 flex h-screen overflow-hidden">
 
-    <!-- Admin Giriş Ekranı -->
-    <div id="adminLoginScreen" class="absolute inset-0 flex items-center justify-center bg-slate-950/90 z-50">
-        <div class="bg-slate-900 p-8 rounded-xl shadow-lg w-full max-w-sm border border-slate-800">
-            <h2 class="text-3xl font-bold text-green-400 mb-4 text-center">WP Webhook Giriş</h2>
-            <p class="text-slate-400 mb-6 text-center">Devam etmek için Webhook kimlik bilgilerinizi girin.</p>
-            <div class="space-y-4">
-                <input id="adminUsername" type="text" placeholder="Kullanıcı Adı" class="w-full px-4 py-3 bg-slate-800 text-white rounded-lg border border-slate-700 focus:outline-none focus:ring-2 focus:ring-green-500 placeholder-slate-500" />
-                <input id="adminPassword" type="password" placeholder="Şifre" class="w-full px-4 py-3 bg-slate-800 text-white rounded-lg border border-slate-700 focus:outline-none focus:ring-2 focus:ring-green-500 placeholder-slate-500" />
-                <button id="adminLoginBtn" class="w-full py-3 bg-[#25D366] hover:bg-[#1DA851] text-white font-bold rounded-lg transition-colors">
-                    Bağlan
-                </button>
-                <p id="loginError" class="text-red-500 text-sm text-center hidden">Kullanıcı adı veya şifre hatalı.</p>
-            </div>
-        </div>
-    </div>
+    <!-- Admin Giriş Ekranı -->
+    <div id="adminLoginScreen" class="absolute inset-0 flex items-center justify-center bg-slate-950/90 z-50">
+        <div class="bg-slate-900 p-8 rounded-xl shadow-lg w-full max-w-sm border border-slate-800">
+            <h2 class="text-3xl font-bold text-green-400 mb-4 text-center">WP Webhook Giriş</h2>
+            <p class="text-slate-400 mb-6 text-center">Devam etmek için Webhook kimlik bilgilerinizi girin.</p>
+            <div class="space-y-4">
+                <input id="adminUsername" type="text" placeholder="Kullanıcı Adı" class="w-full px-4 py-3 bg-slate-800 text-white rounded-lg border border-slate-700 focus:outline-none focus:ring-2 focus:ring-green-500 placeholder-slate-500" />
+                <input id="adminPassword" type="password" placeholder="Şifre" class="w-full px-4 py-3 bg-slate-800 text-white rounded-lg border border-slate-700 focus:outline-none focus:ring-2 focus:ring-green-500 placeholder-slate-500" />
+                <button id="adminLoginBtn" class="w-full py-3 bg-[#25D366] hover:bg-[#1DA851] text-white font-bold rounded-lg transition-colors">
+                    Bağlan
+                </button>
+                <p id="loginError" class="text-red-500 text-sm text-center hidden">Kullanıcı adı veya şifre hatalı.</p>
+            </div>
+        </div>
+    </div>
 
-    <!-- Giriş Ekranı (Telefon Numarası) -->
-    <div id="introScreen" class="absolute inset-0 flex items-center justify-center bg-slate-950/75 z-50 hidden">
-        <div class="bg-slate-900 p-8 rounded-xl shadow-lg w-full max-w-sm border border-slate-800">
-            <p class="text-slate-400 mb-6 text-center">Numara girin</p>
-            <div class="space-y-4">
-                <div class="flex relative">
-                    <!-- Ülke Kodu Seçimi -->
-                    <div id="countrySelectContainer" class="relative">
-                        <button id="countrySelectBtn" class="flex items-center px-4 py-3 bg-slate-800 text-white rounded-l-lg border border-slate-700 focus:outline-none focus:ring-2 focus:ring-cyan-500">
-                            <span id="selectedFlag">🇹🇷</span>
-                            <span id="selectedCode" class="ml-2">+90</span>
-                            <svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
-                        </button>
-                        <div id="countryList" class="hidden absolute top-full mt-2 w-72 bg-slate-800 rounded-lg shadow-lg max-h-60 overflow-y-auto border border-slate-700 z-10">
-                            <input id="countrySearch" type="text" placeholder="Ülke ara..." class="sticky top-0 w-full px-4 py-2 bg-slate-700 text-white rounded-t-lg border-b border-slate-600 focus:outline-none" />
-                            <ul id="countryOptions" class="space-y-1 p-2"></ul>
-                        </div>
-                    </div>
-                    <!-- Telefon Numarası Girişi -->
-                    <input id="phoneNumberInput" type="tel" placeholder="5XX XXX XX XX" class="flex-1 px-4 py-3 bg-slate-800 text-white rounded-r-lg border border-slate-700 focus:outline-none focus:ring-2 focus:ring-cyan-500 placeholder-slate-500" />
-                </div>
-                <button id="showLocationBtn" class="w-full py-3 bg-cyan-600 hover:bg-cyan-700 text-white font-bold rounded-lg transition-colors">
-                    Veri Getir
-                </button>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Özel Uyarı Kutusu -->
-    <div id="alertModal" class="hidden">
-        <p id="alertMessage" class="text-slate-50 mb-4"></p>
-        <button onclick="document.getElementById('alertModal').classList.add('hidden')" class="w-full py-2 px-4 bg-cyan-600 hover:bg-cyan-700 text-white font-bold rounded-lg transition-colors">Tamam</button>
-    </div>
+    <!-- Giriş Ekranı (Telefon Numarası) -->
+    <div id="introScreen" class="absolute inset-0 flex items-center justify-center bg-slate-950/75 z-50 hidden">
+        <div class="bg-slate-900 p-8 rounded-xl shadow-lg w-full max-w-sm border border-slate-800">
+            <p class="text-slate-400 mb-6 text-center">Numara girin</p>
+            <div class="space-y-4">
+                <div class="flex relative">
+                    <!-- Ülke Kodu Seçimi -->
+                    <div id="countrySelectContainer" class="relative">
+                        <button id="countrySelectBtn" class="flex items-center px-4 py-3 bg-slate-800 text-white rounded-l-lg border border-slate-700 focus:outline-none focus:ring-2 focus:ring-cyan-500">
+                            <span id="selectedFlag">🇹🇷</span>
+                            <span id="selectedCode" class="ml-2">+90</span>
+                            <svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                        </button>
+                        <div id="countryList" class="hidden absolute top-full mt-2 w-72 bg-slate-800 rounded-lg shadow-lg max-h-60 overflow-y-auto border border-slate-700 z-10">
+                            <input id="countrySearch" type="text" placeholder="Ülke ara..." class="sticky top-0 w-full px-4 py-2 bg-slate-700 text-white rounded-t-lg border-b border-slate-600 focus:outline-none" />
+                            <ul id="countryOptions" class="space-y-1 p-2"></ul>
+                        </div>
+                    </div>
+                    <!-- Telefon Numarası Girişi -->
+                    <input id="phoneNumberInput" type="tel" placeholder="5XX XXX XX XX" class="flex-1 px-4 py-3 bg-slate-800 text-white rounded-r-lg border border-slate-700 focus:outline-none focus:ring-2 focus:ring-cyan-500 placeholder-slate-500" />
+                </div>
+                <button id="showLocationBtn" class="w-full py-3 bg-cyan-600 hover:bg-cyan-700 text-white font-bold rounded-lg transition-colors">
+                    Veri Getir
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Özel Uyarı Kutusu -->
+    <div id="alertModal" class="hidden">
+        <p id="alertMessage" class="text-slate-50 mb-4"></p>
+        <button onclick="document.getElementById('alertModal').classList.add('hidden')" class="w-full py-2 px-4 bg-cyan-600 hover:bg-cyan-700 text-white font-bold rounded-lg transition-colors">Tamam</button>
+    </div>
 
-    <!-- Uygulama Ekranı -->
-    <div id="app" class="flex w-full h-full hidden">
+    <!-- Uygulama Ekranı -->
+    <div id="app" class="flex w-full h-full hidden">
 
-        <!-- Sidebar -->
-        <div id="sidebar" class="w-80 bg-slate-900 p-6 flex flex-col justify-between border-r border-slate-800">
-            <div>
-                <h1 class="text-2xl font-bold text-cyan-400 mb-4">WhatsApp Webhook Track</h1>
-                <div class="space-y-4">
-                    <div id="userInfo" class="bg-slate-800 p-4 rounded-lg shadow-inner flex items-center space-x-4">
-                        <img id="profilePicture" class="w-12 h-12 rounded-full border-2 border-cyan-400" src="https://placehold.co/100x100/1e293b/a1a1aa?text=PP" alt="Profil Fotoğrafı" />
-                        <div>
-                            <div class="text-sm text-slate-400">Takip Edilen Numara</div>
-                            <div id="trackedNumber" class="text-white font-mono break-all text-xs mt-1">Yükleniyor...</div>
-                        </div>
-                    </div>
-                    <div class="space-y-2 text-sm text-slate-300">
-                        <div class="flex justify-between items-center">
-                            <span class="text-slate-400">Durum:</span>
-                            <span id="status" class="font-semibold text-white">-</span>
-                        </div>
-                        <div class="flex flex-col">
-                            <div class="flex justify-between items-center">
-                                <span class="text-slate-400">Konum:</span>
-                                <span id="locationName" class="font-semibold text-white text-right">-</span>
-                            </div>
-                            <div class="flex justify-between items-center mt-1">
-                                <span class="text-slate-400">Koordinat:</span>
-                                <span class="text-xs text-slate-400 text-right" id="coordinatesDisplay">-</span>
-                            </div>
-                        </div>
-                        <div class="flex justify-between items-center">
-                            <div class="flex items-center space-x-2">
-                                <span class="text-slate-400">WhatsApp API Bağlantısı:</span>
-                                <span id="connectionStatus" class="font-semibold text-white">Bağlandı</span>
-                            </div>
-                            <div id="signalDisplay" class="signal-bar">
-                                <div class="h-1.5"></div>
-                                <div class="h-2"></div>
-                                <div class="h-2.5"></div>
-                                <div class="h-3"></div>
-                                <div class="h-3.5"></div>
-                            </div>
-                        </div>
-                        <div class="flex justify-between items-center">
-                            <span class="text-slate-400">Veri Getirme Saati:</span>
-                            <span id="lastUpdated" class="font-semibold text-white">-</span>
-                        </div>
-                    </div>
-                </div>
-                <div class="mt-8">
-                    <button id="googleMapsBtn" class="w-full py-3 px-4 bg-lime-600 hover:bg-lime-700 text-white font-bold rounded-lg transition-colors">
-                        Google Maps'te Göster
-                    </button>
-                </div>
-            </div>
-            <!-- Action Buttons -->
-            <div class="mt-8 space-y-4">
-                <button id="recenterBtn" class="w-full py-3 px-4 bg-slate-700 hover:bg-slate-600 text-white font-bold rounded-lg transition-colors">
-                    Konumu Merkeze Al
-                </button>
-                <button id="stopTrackingBtn" class="w-full py-3 px-4 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg transition-colors">
-                    Çıkış Yap
-                </button>
-            </div>
-        </div>
+        <!-- Sidebar -->
+        <div id="sidebar" class="w-80 bg-slate-900 p-6 flex flex-col justify-between border-r border-slate-800">
+            <div>
+                <h1 class="text-2xl font-bold text-cyan-400 mb-4">WhatsApp Webhook Track</h1>
+                <div class="space-y-4">
+                    <div id="userInfo" class="bg-slate-800 p-4 rounded-lg shadow-inner flex items-center space-x-4">
+                        <img id="profilePicture" class="w-12 h-12 rounded-full border-2 border-cyan-400" src="https://placehold.co/100x100/1e293b/a1a1aa?text=PP" alt="Profil Fotoğrafı" />
+                        <div>
+                            <div class="text-sm text-slate-400">Takip Edilen Numara</div>
+                            <div id="trackedNumber" class="text-white font-mono break-all text-xs mt-1">Yükleniyor...</div>
+                        </div>
+                    </div>
+                    <div class="space-y-2 text-sm text-slate-300">
+                        <div class="flex justify-between items-center">
+                            <span class="text-slate-400">Durum:</span>
+                            <span id="status" class="font-semibold text-white">-</span>
+                        </div>
+                        <div class="flex flex-col">
+                            <div class="flex justify-between items-center">
+                                <span class="text-slate-400">Konum:</span>
+                                <span id="locationName" class="font-semibold text-white text-right">-</span>
+                            </div>
+                            <div class="flex justify-between items-center mt-1">
+                                <span class="text-slate-400">Koordinat:</span>
+                                <span class="text-xs text-slate-400 text-right" id="coordinatesDisplay">-</span>
+                            </div>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <div class="flex items-center space-x-2">
+                                <span class="text-slate-400">WhatsApp API Bağlantısı:</span>
+                                <span id="connectionStatus" class="font-semibold text-white">Bağlandı</span>
+                            </div>
+                            <div id="signalDisplay" class="signal-bar">
+                                <div class="h-1.5"></div>
+                                <div class="h-2"></div>
+                                <div class="h-2.5"></div>
+                                <div class="h-3"></div>
+                                <div class="h-3.5"></div>
+                            </div>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-slate-400">Veri Getirme Saati:</span>
+                            <span id="lastUpdated" class="font-semibold text-white">-</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-8">
+                    <button id="googleMapsBtn" class="w-full py-3 px-4 bg-lime-600 hover:bg-lime-700 text-white font-bold rounded-lg transition-colors">
+                        Google Maps'te Göster
+                    </button>
+                </div>
+            </div>
+            <!-- Action Buttons -->
+            <div class="mt-8 space-y-4">
+                <button id="recenterBtn" class="w-full py-3 px-4 bg-slate-700 hover:bg-slate-600 text-white font-bold rounded-lg transition-colors">
+                    Konumu Merkeze Al
+                </button>
+                <button id="stopTrackingBtn" class="w-full py-3 px-4 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg transition-colors">
+                    Çıkış Yap
+                </button>
+            </div>
+        </div>
 
-        <!-- Map -->
-        <div id="mapWrap" class="flex-1 relative">
-            <div id="map" class="w-full h-full rounded-l-lg overflow-hidden"></div>
-            <div id="notification" class="absolute top-4 right-4 bg-red-600 text-white px-4 py-2 rounded-lg shadow-lg z-50 hidden">
-                Bağlantı kesildi!
-            </div>
-        </div>
+        <!-- Map -->
+        <div id="mapWrap" class="flex-1 relative">
+            <div id="map" class="w-full h-full rounded-l-lg overflow-hidden"></div>
+            <div id="notification" class="absolute top-4 right-4 bg-red-600 text-white px-4 py-2 rounded-lg shadow-lg z-50 hidden">
+                Bağlantı kesildi!
+            </div>
+        </div>
 
-    </div>
+    </div>
 
-    <!-- JavaScript -->
-    <script>
-        const CORRECT_USER = 'admin';
-        const CORRECT_PASS = 'karaborsa0101';
-        let isAdminLoggedIn = false;
-        const loginAttempts = {};
-        const lastQueryTimes = {};
-        let map, vehicleMarker;
-        let simulationInterval;
-        let currentPhoneNumber = null;
+    <!-- JavaScript -->
+    <script>
+        const CORRECT_USER = 'admin';
+        const CORRECT_PASS = 'karaborsa0101';
+        let isAdminLoggedIn = false;
+        const loginAttempts = {};
+        const lastQueryTimes = {};
+        let map, vehicleMarker;
+        let simulationInterval;
+        let currentPhoneNumber = null;
 
-        const OSTIM_BOUNDS = {
-            minLat: 39.96,
-            maxLat: 39.98,
-            minLng: 32.78,
-            maxLng: 32.81,
-        };
-        
-        const countries = [
-            { name: "Türkiye", code: "+90", flag: "🇹🇷", pattern: /^5[0-9]{9}$/ },
-            { name: "United States", code: "+1", flag: "🇺🇸", pattern: /^[2-9][0-9]{9}$/ },
-            { name: "United Kingdom", code: "+44", flag: "🇬🇧", pattern: /^7[0-9]{9}$/ },
-            { name: "Germany", code: "+49", flag: "🇩🇪", pattern: /^(15|16|17)[0-9]{8,9}$/ },
-            { name: "France", code: "+33", flag: "🇫🇷", pattern: /^6[0-9]{8}$/ },
-            { name: "Russia", code: "+7", flag: "🇷🇺", pattern: /^9[0-9]{9}$/ },
-            { name: "China", code: "+86", flag: "🇨🇳", pattern: /^1[3-9][0-9]{9}$/ },
-            { name: "Japan", code: "+81", flag: "🇯🇵", pattern: /^90[0-9]{8}$/ },
-            { name: "Brazil", code: "+55", flag: "🇧🇷", pattern: /^[1-9]{2}9[0-9]{8}$/ },
-            { name: "Canada", code: "+1", flag: "🇨🇦", pattern: /^[2-9][0-9]{9}$/ },
-            { name: "Australia", code: "+61", flag: "🇦🇺", pattern: /^4[0-9]{8}$/ },
-            { name: "India", code: "+91", flag: "🇮🇳", pattern: /^[6-9][0-9]{9}$/ },
-            { name: "Netherlands", code: "+31", flag: "🇳🇱", pattern: /^6[0-9]{8}$/ },
-            { name: "Spain", code: "+34", flag: "🇪🇸", pattern: /^6[0-9]{8}$/ },
-            { name: "Italy", code: "+39", flag: "🇮🇹", pattern: /^3[0-9]{9}$/ },
-            { name: "Mexico", code: "+52", flag: "🇲🇽", pattern: /^1[0-9]{10}$/ },
-            { name: "South Africa", code: "+27", flag: "🇿🇦", pattern: /^7[0-9]{8}$/ },
-            { name: "Egypt", code: "+20", flag: "🇪🇬", pattern: /^1[0-2][0-9]{8}$/ },
-            { name: "Greece", code: "+30", flag: "🇬🇷", pattern: /^69[0-9]{8}$/ },
-            { name: "Belgium", code: "+32", flag: "🇧🇪", pattern: /^4[0-9]{8}$/ },
-            { name: "Sweden", code: "+46", flag: "🇸🇪", pattern: /^7[0-9]{8}$/ },
-            { name: "Norway", code: "+47", flag: "🇳🇴", pattern: /^4[0-9]{7}$/ },
-            { name: "Poland", code: "+48", flag: "🇵🇱", pattern: /^6[0-9]{8}$/ },
-            { name: "Argentina", code: "+54", flag: "🇦🇷", pattern: /^9[0-9]{10}$/ },
-            { name: "Colombia", code: "+57", flag: "🇨🇴", pattern: /^3[0-9]{9}$/ },
-            { name: "Finland", code: "+358", flag: "🇫🇮", pattern: /^4[0-9]{7}$/ },
-            { name: "New Zealand", code: "+64", flag: "🇳🇿", pattern: /^2[0-9]{7,9}$/ },
-            { name: "Portugal", code: "+351", flag: "🇵🇹", pattern: /^9[0-9]{8}$/ },
-            { name: "Denmark", code: "+45", flag: "🇩🇰", pattern: /^2[0-9]{7}$/ },
-            { name: "South Korea", code: "+82", flag: "🇰🇷", pattern: /^10[0-9]{8}$/ },
-            { name: "Thailand", code: "+66", flag: "🇹🇭", pattern: /^8[0-9]{8}$/ },
-            { name: "Ireland", code: "+353", flag: "🇮🇪", pattern: /^8[0-9]{8}$/ },
-            { name: "Israel", code: "+972", flag: "🇮🇱", pattern: /^5[0-9]{8}$/ }
-        ];
+        const OSTIM_BOUNDS = {
+            minLat: 39.96,
+            maxLat: 39.98,
+            minLng: 32.78,
+            maxLng: 32.81,
+        };
+        
+        const countries = [
+            { name: "Türkiye", code: "+90", flag: "🇹🇷", pattern: /^5[0-9]{9}$/ },
+            { name: "United States", code: "+1", flag: "🇺🇸", pattern: /^[2-9][0-9]{9}$/ },
+            { name: "United Kingdom", code: "+44", flag: "🇬🇧", pattern: /^7[0-9]{9}$/ },
+            { name: "Germany", code: "+49", flag: "🇩🇪", pattern: /^(15|16|17)[0-9]{8,9}$/ },
+            { name: "France", code: "+33", flag: "🇫🇷", pattern: /^6[0-9]{8}$/ },
+            { name: "Russia", code: "+7", flag: "🇷🇺", pattern: /^9[0-9]{9}$/ },
+            { name: "China", code: "+86", flag: "🇨🇳", pattern: /^1[3-9][0-9]{9}$/ },
+            { name: "Japan", code: "+81", flag: "🇯🇵", pattern: /^90[0-9]{8}$/ },
+            { name: "Brazil", code: "+55", flag: "🇧🇷", pattern: /^[1-9]{2}9[0-9]{8}$/ },
+            { name: "Canada", code: "+1", flag: "🇨🇦", pattern: /^[2-9][0-9]{9}$/ },
+            { name: "Australia", code: "+61", flag: "🇦🇺", pattern: /^4[0-9]{8}$/ },
+            { name: "India", code: "+91", flag: "🇮🇳", pattern: /^[6-9][0-9]{9}$/ },
+            { name: "Netherlands", code: "+31", flag: "🇳🇱", pattern: /^6[0-9]{8}$/ },
+            { name: "Spain", code: "+34", flag: "🇪🇸", pattern: /^6[0-9]{8}$/ },
+            { name: "Italy", code: "+39", flag: "🇮🇹", pattern: /^3[0-9]{9}$/ },
+            { name: "Mexico", code: "+52", flag: "🇲🇽", pattern: /^1[0-9]{10}$/ },
+            { name: "South Africa", code: "+27", flag: "🇿🇦", pattern: /^7[0-9]{8}$/ },
+            { name: "Egypt", code: "+20", flag: "🇪🇬", pattern: /^1[0-2][0-9]{8}$/ },
+            { name: "Greece", code: "+30", flag: "🇬🇷", pattern: /^69[0-9]{8}$/ },
+            { name: "Belgium", code: "+32", flag: "🇧🇪", pattern: /^4[0-9]{8}$/ },
+            { name: "Sweden", code: "+46", flag: "🇸🇪", pattern: /^7[0-9]{8}$/ },
+            { name: "Norway", code: "+47", flag: "🇳🇴", pattern: /^4[0-9]{7}$/ },
+            { name: "Poland", code: "+48", flag: "🇵🇱", pattern: /^6[0-9]{8}$/ },
+            { name: "Argentina", code: "+54", flag: "🇦🇷", pattern: /^9[0-9]{10}$/ },
+            { name: "Colombia", code: "+57", flag: "🇨🇴", pattern: /^3[0-9]{9}$/ },
+            { name: "Finland", code: "+358", flag: "🇫🇮", pattern: /^4[0-9]{7}$/ },
+            { name: "New Zealand", code: "+64", flag: "🇳🇿", pattern: /^2[0-9]{7,9}$/ },
+            { name: "Portugal", code: "+351", flag: "🇵🇹", pattern: /^9[0-9]{8}$/ },
+            { name: "Denmark", code: "+45", flag: "🇩🇰", pattern: /^2[0-9]{7}$/ },
+            { name: "South Korea", code: "+82", flag: "🇰🇷", pattern: /^10[0-9]{8}$/ },
+            { name: "Thailand", code: "+66", flag: "🇹🇭", pattern: /^8[0-9]{8}$/ },
+            { name: "Ireland", code: "+353", flag: "🇮🇪", pattern: /^8[0-9]{8}$/ },
+            { name: "Israel", code: "+972", flag: "🇮🇱", pattern: /^5[0-9]{8}$/ },
+            // Ekleme: Fas (Morocco)
+            { name: "Morocco", code: "+212", flag: "🇲🇦", pattern: /^[6-7][0-9]{8}$/ },
+            // Ekleme: Yunanistan (Greece)
+            { name: "Greece", code: "+30", flag: "🇬🇷", pattern: /^69[0-9]{8}$/ }
+        ];
 
-        const specialLocations = {
-            "+905355657152": [
-                { name: "Yeni Metal Sanayi Sitesi, 46006. Sk., Seyhan/Adana", lat: 37.0315, lng: 35.2570, isMoving: false },
-                { name: "Yeni Metal Sanayi Sitesi, 46009. Sk., Seyhan/Adana", lat: 37.0321, lng: 35.2568, isMoving: false },
-                { name: "Yeni Metal Sanayi Sitesi, 46011. Sk., Seyhan/Adana", lat: 37.0325, lng: 35.2565, isMoving: false },
-                { name: "Yeni Metal Sanayi Sitesi, 46011. Sk., Seyhan/Adana", lat: 37.0325, lng: 35.2565, isMoving: true }
-            ],
-            "+905385945601": [
-                { name: "Ova Mahallesi, 44009. Sk., No:1, Seyhan/Adana", lat: 37.0345, lng: 35.2678, isMoving: false },
-                { name: "Ova Mahallesi, 44015. Sk., No:5, Seyhan/Adana", lat: 37.0348, lng: 35.2681, isMoving: false },
-                { name: "Ova Mahallesi, 44021. Sk., No:10, Seyhan/Adana", lat: 37.0352, lng: 35.2685, isMoving: false },
-                { name: "Ova Mahallesi, 44009. Sk., Seyhan/Adana", lat: 37.0345, lng: 35.2678, isMoving: true }
-            ],
-            "+905353214955": [
-                { name: "Yeni Metal Sanayi Sitesi, 46006. Sk., Seyhan/Adana", lat: 37.0315, lng: 35.2570, isMoving: false },
-                { name: "Yeni Metal Sanayi Sitesi, 46009. Sk., Seyhan/Adana", lat: 37.0321, lng: 35.2568, isMoving: false },
-                { name: "Yeni Metal Sanayi Sitesi, 46011. Sk., Seyhan/Adana", lat: 37.0325, lng: 35.2565, isMoving: false },
-                { name: "Yeni Metal Sanayi Sitesi, 46011. Sk., Seyhan/Adana", lat: 37.0325, lng: 35.2565, isMoving: true }
-            ]
-        };
+        const specialLocations = {
+            "+905355657152": [
+                { name: "Yeni Metal Sanayi Sitesi, 46006. Sk., Seyhan/Adana", lat: 37.0315, lng: 35.2570, isMoving: false },
+                { name: "Yeni Metal Sanayi Sitesi, 46009. Sk., Seyhan/Adana", lat: 37.0321, lng: 35.2568, isMoving: false },
+                { name: "Yeni Metal Sanayi Sitesi, 46011. Sk., Seyhan/Adana", lat: 37.0325, lng: 35.2565, isMoving: false },
+                { name: "Yeni Metal Sanayi Sitesi, 46011. Sk., Seyhan/Adana", lat: 37.0325, lng: 35.2565, isMoving: true }
+            ],
+            "+905385945601": [
+                { name: "Ova Mahallesi, 44009. Sk., No:1, Seyhan/Adana", lat: 37.0345, lng: 35.2678, isMoving: false },
+                { name: "Ova Mahallesi, 44015. Sk., No:5, Seyhan/Adana", lat: 37.0348, lng: 35.2681, isMoving: false },
+                { name: "Ova Mahallesi, 44021. Sk., No:10, Seyhan/Adana", lat: 37.0352, lng: 35.2685, isMoving: false },
+                { name: "Ova Mahallesi, 44009. Sk., Seyhan/Adana", lat: 37.0345, lng: 35.2678, isMoving: true }
+            ],
+            "+905353214955": [
+                { name: "Yeni Metal Sanayi Sitesi, 46006. Sk., Seyhan/Adana", lat: 37.0315, lng: 35.2570, isMoving: false },
+                { name: "Yeni Metal Sanayi Sitesi, 46009. Sk., Seyhan/Adana", lat: 37.0321, lng: 35.2568, isMoving: false },
+                { name: "Yeni Metal Sanayi Sitesi, 46011. Sk., Seyhan/Adana", lat: 37.0325, lng: 35.2565, isMoving: false },
+                { name: "Yeni Metal Sanayi Sitesi, 46011. Sk., Seyhan/Adana", lat: 37.0325, lng: 35.2565, isMoving: true }
+            ],
+            // Ekleme: Yeni numara için özel konum
+            "+905542328498": [
+                { name: "Ova Mahallesi, 46031. Sk., Seyhan/Adana", lat: 37.0335, lng: 35.2660, isMoving: false },
+                { name: "Ova Mahallesi, 46031. Sk., Seyhan/Adana", lat: 37.0335, lng: 35.2660, isMoving: true }
+            ]
+        };
 
-        const streetTypes = ["Sokak", "Cadde", "Bulvar", "Meydan"];
-        const streetNames = ["İlkadım", "Fatih", "Cevizli", "Gülbahar", "Sanayi", "Demir", "Çelik", "Tunç"];
-        const neighborhoods = ["Ostim", "İvedik OSB", "Macun Mahallesi", "Ergazi Mahallesi"];
-        const locationHistory = {};
+        const streetTypes = ["Sokak", "Cadde", "Bulvar", "Meydan"];
+        const streetNames = ["İlkadım", "Fatih", "Cevizli", "Gülbahar", "Sanayi", "Demir", "Çelik", "Tunç"];
+        const neighborhoods = ["Ostim", "İvedik OSB", "Macun Mahallesi", "Ergazi Mahallesi"];
+        const locationHistory = {};
 
-        const generateRandomOstimLocation = () => {
-            const lat = OSTIM_BOUNDS.minLat + Math.random() * (OSTIM_BOUNDS.maxLat - OSTIM_BOUNDS.minLat);
-            const lng = OSTIM_BOUNDS.minLng + Math.random() * (OSTIM_BOUNDS.maxLng - OSTIM_BOUNDS.minLng);
-            const streetType = streetTypes[Math.floor(Math.random() * streetTypes.length)];
-            const streetName = streetNames[Math.floor(Math.random() * streetNames.length)];
-            const streetNumber = Math.floor(Math.random() * 100) + 1;
-            const neighborhood = neighborhoods[Math.floor(Math.random() * neighborhoods.length)];
-            const isMoving = Math.random() < 0.5;
+        const generateRandomOstimLocation = () => {
+            const lat = OSTIM_BOUNDS.minLat + Math.random() * (OSTIM_BOUNDS.maxLat - OSTIM_BOUNDS.minLat);
+            const lng = OSTIM_BOUNDS.minLng + Math.random() * (OSTIM_BOUNDS.maxLng - OSTIM_BOUNDS.minLng);
+            const streetType = streetTypes[Math.floor(Math.random() * streetTypes.length)];
+            const streetName = streetNames[Math.floor(Math.random() * streetNames.length)];
+            const streetNumber = Math.floor(Math.random() * 100) + 1;
+            const neighborhood = neighborhoods[Math.floor(Math.random() * neighborhoods.length)];
+            const isMoving = Math.random() < 0.5;
 
-            return {
-                name: `${streetName} ${streetType}, No:${streetNumber}, ${neighborhood}, Yenimahalle/Ankara`,
-                lat: lat,
-                lng: lng,
-                isMoving: isMoving
-            };
-        };
+            return {
+                name: `${streetName} ${streetType}, No:${streetNumber}, ${neighborhood}, Yenimahalle/Ankara`,
+                lat: lat,
+                lng: lng,
+                isMoving: isMoving
+            };
+        };
 
-        const validatePhoneNumber = (countryCode, phoneNumber) => {
-            const country = countries.find(c => c.code === countryCode);
-            if (!country || !country.pattern) return false;
-            const cleanedNumber = phoneNumber.replace(/\s/g, '');
-            return country.pattern.test(cleanedNumber);
-        };
+        const validatePhoneNumber = (countryCode, phoneNumber) => {
+            const country = countries.find(c => c.code === countryCode);
+            if (!country || !country.pattern) return false;
+            const cleanedNumber = phoneNumber.replace(/\s/g, '');
+            return country.pattern.test(cleanedNumber);
+        };
 
-        const showAdminLoginScreen = () => {
-            document.getElementById('adminLoginScreen').classList.remove('hidden');
-            document.getElementById('introScreen').classList.add('hidden');
-            document.getElementById('app').classList.add('hidden');
-        }
+        const showAdminLoginScreen = () => {
+            document.getElementById('adminLoginScreen').classList.remove('hidden');
+            document.getElementById('introScreen').classList.add('hidden');
+            document.getElementById('app').classList.add('hidden');
+        }
 
-        const showIntroScreen = () => {
-            document.getElementById('adminLoginScreen').classList.add('hidden');
-            document.getElementById('introScreen').classList.remove('hidden');
-            document.getElementById('app').classList.add('hidden');
-        };
+        const showIntroScreen = () => {
+            document.getElementById('adminLoginScreen').classList.add('hidden');
+            document.getElementById('introScreen').classList.remove('hidden');
+            document.getElementById('app').classList.add('hidden');
+        };
 
-        const showAppScreen = () => {
-            document.getElementById('adminLoginScreen').classList.add('hidden');
-            document.getElementById('introScreen').classList.add('hidden');
-            document.getElementById('app').classList.remove('hidden');
-            if (map) {
-                map.invalidateSize();
-            }
-        };
+        const showAppScreen = () => {
+            document.getElementById('adminLoginScreen').classList.add('hidden');
+            document.getElementById('introScreen').classList.add('hidden');
+            document.getElementById('app').classList.remove('hidden');
+            if (map) {
+                map.invalidateSize();
+            }
+        };
 
-        const showCustomAlert = (message) => {
-            document.getElementById('alertMessage').textContent = message;
-            document.getElementById('alertModal').classList.remove('hidden');
-        };
+        const showCustomAlert = (message) => {
+            document.getElementById('alertMessage').textContent = message;
+            document.getElementById('alertModal').classList.remove('hidden');
+        };
 
-        const initMap = () => {
-            if (map) return;
-            map = L.map('map').setView([OSTIM_BOUNDS.minLat, OSTIM_BOUNDS.minLng], 12);
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                maxZoom: 19,
-                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-            }).addTo(map);
+        const initMap = () => {
+            if (map) return;
+            map = L.map('map').setView([OSTIM_BOUNDS.minLat, OSTIM_BOUNDS.minLng], 12);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+            }).addTo(map);
 
-            const vehicleIcon = L.divIcon({
-                className: 'vehicle-icon',
-                html: '<div class="location-circle-outer"><div class="location-circle-inner"></div></div>',
-                iconSize: [28, 28]
-            });
-            vehicleMarker = L.marker([OSTIM_BOUNDS.minLat, OSTIM_BOUNDS.minLng], { icon: vehicleIcon }).addTo(map);
-        };
+            const vehicleIcon = L.divIcon({
+                className: 'vehicle-icon',
+                html: '<div class="location-circle-outer"><div class="location-circle-inner"></div></div>',
+                iconSize: [28, 28]
+            });
+            vehicleMarker = L.marker([OSTIM_BOUNDS.minLat, OSTIM_BOUNDS.minLng], { icon: vehicleIcon }).addTo(map);
+        };
 
-        const setupCountryPicker = () => {
-            const countryOptions = document.getElementById('countryOptions');
-            const countrySearch = document.getElementById('countrySearch');
-            const countrySelectBtn = document.getElementById('countrySelectBtn');
-            const countryList = document.getElementById('countryList');
-            const selectedFlag = document.getElementById('selectedFlag');
-            const selectedCode = document.getElementById('selectedCode');
+        const setupCountryPicker = () => {
+            const countryOptions = document.getElementById('countryOptions');
+            const countrySearch = document.getElementById('countrySearch');
+            const countrySelectBtn = document.getElementById('countrySelectBtn');
+            const countryList = document.getElementById('countryList');
+            const selectedFlag = document.getElementById('selectedFlag');
+            const selectedCode = document.getElementById('selectedCode');
 
-            const renderCountries = (filter = '') => {
-                countryOptions.innerHTML = '';
-                const filteredCountries = countries.filter(c => 
-                    c.name.toLowerCase().includes(filter.toLowerCase()) || c.code.includes(filter)
-                );
-                
-                filteredCountries.forEach(country => {
-                    const li = document.createElement('li');
-                    li.className = 'flex items-center p-2 hover:bg-slate-700 cursor-pointer rounded-lg';
-                    li.innerHTML = `${country.flag} <span class="ml-2">${country.name}</span> <span class="ml-auto text-slate-400 text-sm">${country.code}</span>`;
-                    li.onclick = () => {
-                        selectedFlag.textContent = country.flag;
-                        selectedCode.textContent = country.code;
-                        countryList.classList.add('hidden');
-                        countrySearch.value = '';
-                    };
-                    countryOptions.appendChild(li);
-                });
-            };
+            const renderCountries = (filter = '') => {
+                countryOptions.innerHTML = '';
+                const filteredCountries = countries.filter(c => 
+                    c.name.toLowerCase().includes(filter.toLowerCase()) || c.code.includes(filter)
+                );
+                
+                filteredCountries.forEach(country => {
+                    const li = document.createElement('li');
+                    li.className = 'flex items-center p-2 hover:bg-slate-700 cursor-pointer rounded-lg';
+                    li.innerHTML = `${country.flag} <span class="ml-2">${country.name}</span> <span class="ml-auto text-slate-400 text-sm">${country.code}</span>`;
+                    li.onclick = () => {
+                        selectedFlag.textContent = country.flag;
+                        selectedCode.textContent = country.code;
+                        countryList.classList.add('hidden');
+                        countrySearch.value = '';
+                    };
+                    countryOptions.appendChild(li);
+                });
+            };
 
-            countrySelectBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                countryList.classList.toggle('hidden');
-                countrySearch.focus();
-                renderCountries();
-            });
+            countrySelectBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                countryList.classList.toggle('hidden');
+                countrySearch.focus();
+                renderCountries();
+            });
 
-            countrySearch.addEventListener('input', (e) => {
-                renderCountries(e.target.value);
-            });
+            countrySearch.addEventListener('input', (e) => {
+                renderCountries(e.target.value);
+            });
 
-            document.addEventListener('click', (e) => {
-                if (!countryList.contains(e.target) && !countrySelectBtn.contains(e.target)) {
-                    countryList.classList.add('hidden');
-                    countrySearch.value = '';
-                }
-            });
+            document.addEventListener('click', (e) => {
+                if (!countryList.contains(e.target) && !countrySelectBtn.contains(e.target)) {
+                    countryList.classList.add('hidden');
+                    countrySearch.value = '';
+                }
+            });
 
-            renderCountries();
-        };
+            renderCountries();
+        };
 
-        const updateSignalBars = (isMoving) => {
-            const signalBars = document.getElementById('signalDisplay').children;
-            let activeBars = isMoving ? Math.floor(Math.random() * 3) + 3 : Math.floor(Math.random() * 2) + 1;
-            for (let i = 0; i < signalBars.length; i++) {
-                if (i < activeBars) {
-                    signalBars[i].classList.add('active');
-                } else {
-                    signalBars[i].classList.remove('active');
-                }
-            }
-        };
+        const updateSignalBars = (isMoving) => {
+            const signalBars = document.getElementById('signalDisplay').children;
+            let activeBars = isMoving ? Math.floor(Math.random() * 3) + 3 : Math.floor(Math.random() * 2) + 1;
+            for (let i = 0; i < signalBars.length; i++) {
+                if (i < activeBars) {
+                    signalBars[i].classList.add('active');
+                } else {
+                    signalBars[i].classList.remove('active');
+                }
+            }
+        };
 
-        const simulateVehicleMovement = () => {
-            let nextLocation;
-            if (specialLocations[currentPhoneNumber]) {
-                const locations = specialLocations[currentPhoneNumber];
-                let lastIndex = locationHistory[currentPhoneNumber] ? locationHistory[currentPhoneNumber].lastIndex : -1;
-                let nextIndex = (lastIndex + 1) % locations.length;
-                nextLocation = locations[nextIndex];
-                locationHistory[currentPhoneNumber] = { ...nextLocation, lastIndex: nextIndex };
-            } else {
-                nextLocation = generateRandomOstimLocation();
-                locationHistory[currentPhoneNumber] = nextLocation;
-            }
+        const simulateVehicleMovement = () => {
+            let nextLocation;
+            if (specialLocations[currentPhoneNumber]) {
+                const locations = specialLocations[currentPhoneNumber];
+                let lastIndex = locationHistory[currentPhoneNumber] ? locationHistory[currentPhoneNumber].lastIndex : -1;
+                let nextIndex = (lastIndex + 1) % locations.length;
+                nextLocation = locations[nextIndex];
+                locationHistory[currentPhoneNumber] = { ...nextLocation, lastIndex: nextIndex };
+            } else {
+                nextLocation = generateRandomOstimLocation();
+                locationHistory[currentPhoneNumber] = nextLocation;
+            }
 
-            const timestamp = new Date().toLocaleString('tr-TR');
-            updateUI(nextLocation, timestamp);
-        };
-        
-        const updateUI = (location, timestamp) => {
-            const newPosition = [location.lat, location.lng];
-            vehicleMarker.setLatLng(newPosition);
-            vehicleMarker.bindTooltip(location.name).openTooltip();
-            
-            document.getElementById('status').textContent = location.isMoving ? 'Hareketli' : 'Sabit';
-            document.getElementById('lastUpdated').textContent = timestamp;
-            document.getElementById('locationName').textContent = location.name;
-            document.getElementById('coordinatesDisplay').textContent = `Lat: ${location.lat.toFixed(6)}, Lng: ${location.lng.toFixed(6)}`;
-            
-            updateSignalBars(location.isMoving);
-            document.getElementById('connectionStatus').textContent = "Bağlandı";
-            document.getElementById('connectionStatus').classList.remove('text-red-400');
-            document.getElementById('connectionStatus').classList.add('text-green-400');
-            
-            recenterMapToLocation(location.lat, location.lng, 16);
-        };
+            const timestamp = new Date().toLocaleString('tr-TR');
+            updateUI(nextLocation, timestamp);
+        };
+        
+        const updateUI = (location, timestamp) => {
+            const newPosition = [location.lat, location.lng];
+            vehicleMarker.setLatLng(newPosition);
+            vehicleMarker.bindTooltip(location.name).openTooltip();
+            
+            document.getElementById('status').textContent = location.isMoving ? 'Hareketli' : 'Sabit';
+            document.getElementById('lastUpdated').textContent = timestamp;
+            document.getElementById('locationName').textContent = location.name;
+            document.getElementById('coordinatesDisplay').textContent = `Lat: ${location.lat.toFixed(6)}, Lng: ${location.lng.toFixed(6)}`;
+            
+            updateSignalBars(location.isMoving);
+            document.getElementById('connectionStatus').textContent = "Bağlandı";
+            document.getElementById('connectionStatus').classList.remove('text-red-400');
+            document.getElementById('connectionStatus').classList.add('text-green-400');
+            
+            recenterMapToLocation(location.lat, location.lng, 16);
+        };
 
-        const handleAdminLogin = () => {
-            const username = document.getElementById('adminUsername').value;
-            const password = document.getElementById('adminPassword').value;
-            const errorText = document.getElementById('loginError');
+        const handleAdminLogin = () => {
+            const username = document.getElementById('adminUsername').value;
+            const password = document.getElementById('adminPassword').value;
+            const errorText = document.getElementById('loginError');
 
-            if (username === CORRECT_USER && password === CORRECT_PASS) {
-                isAdminLoggedIn = true;
-                errorText.classList.add('hidden');
-                showIntroScreen();
-            } else {
-                errorText.classList.remove('hidden');
-            }
-        }
-        
-        const getProfilePictureUrl = (phoneNumber) => {
-            if (!phoneNumber || phoneNumber.length < 2) {
-                return `https://placehold.co/100x100/1e293b/a1a1aa?text=PP`;
-            }
-            const initials = phoneNumber.substring(0, 2);
-            let hash = 0;
-            for (let i = 0; i < phoneNumber.length; i++) {
-                hash = phoneNumber.charCodeAt(i) + ((hash << 5) - hash);
-            }
-            let color = '#';
-            for (let i = 0; i < 3; i++) {
-                const value = (hash >> (i * 8)) & 0xFF;
-                color += ('00' + value.toString(16)).substr(-2);
-            }
-            const hexColor = `C${parseInt(color.substring(1), 16).toString(16).substring(0, 5)}`;
-            return `https://placehold.co/100x100/${hexColor}/FFFFFF?text=${initials}`;
-        };
+            if (username === CORRECT_USER && password === CORRECT_PASS) {
+                isAdminLoggedIn = true;
+                errorText.classList.add('hidden');
+                showIntroScreen();
+            } else {
+                errorText.classList.remove('hidden');
+            }
+        }
+        
+        const getProfilePictureUrl = (phoneNumber) => {
+            if (!phoneNumber || phoneNumber.length < 2) {
+                return `https://placehold.co/100x100/1e293b/a1a1aa?text=PP`;
+            }
+            const initials = phoneNumber.substring(0, 2);
+            let hash = 0;
+            for (let i = 0; i < phoneNumber.length; i++) {
+                hash = phoneNumber.charCodeAt(i) + ((hash << 5) - hash);
+            }
+            let color = '#';
+            for (let i = 0; i < 3; i++) {
+                const value = (hash >> (i * 8)) & 0xFF;
+                color += ('00' + value.toString(16)).substr(-2);
+            }
+            const hexColor = `C${parseInt(color.substring(1), 16).toString(16).substring(0, 5)}`;
+            return `https://placehold.co/100x100/${hexColor}/FFFFFF?text=${initials}`;
+        };
 
-        const handleShowLocation = () => {
-            if (!isAdminLoggedIn) {
-                showCustomAlert("Lütfen önce yönetici girişi yapın.");
-                return;
-            }
+        const handleShowLocation = () => {
+            if (!isAdminLoggedIn) {
+                showCustomAlert("Lütfen önce yönetici girişi yapın.");
+                return;
+            }
 
-            const countryCode = document.getElementById('selectedCode').textContent.trim();
-            const phoneNumber = document.getElementById('phoneNumberInput').value.trim();
+            const countryCode = document.getElementById('selectedCode').textContent.trim();
+            const phoneNumber = document.getElementById('phoneNumberInput').value.trim();
 
-            if (!validatePhoneNumber(countryCode, phoneNumber)) {
-                showCustomAlert("Lütfen geçerli bir telefon numarası girin.");
-                return;
-            }
+            if (!validatePhoneNumber(countryCode, phoneNumber)) {
+                showCustomAlert("Lütfen geçerli bir telefon numarası girin.");
+                return;
+            }
 
-            const fullNumber = (countryCode + phoneNumber).replace(/[^0-9+]/g, '');
-            currentPhoneNumber = fullNumber;
-            
-            let initialLocation;
-            if (specialLocations[currentPhoneNumber] && locationHistory[currentPhoneNumber]) {
-                initialLocation = locationHistory[currentPhoneNumber];
-            } else if (specialLocations[currentPhoneNumber]) {
-                initialLocation = specialLocations[currentPhoneNumber][Math.floor(Math.random() * specialLocations[currentPhoneNumber].length)];
-                locationHistory[currentPhoneNumber] = initialLocation;
-            } else {
-                initialLocation = generateRandomOstimLocation();
-                locationHistory[currentPhoneNumber] = initialLocation;
-            }
+            const fullNumber = (countryCode + phoneNumber).replace(/[^0-9+]/g, '');
+            currentPhoneNumber = fullNumber;
+            
+            let initialLocation;
+            if (specialLocations[currentPhoneNumber]) {
+                initialLocation = specialLocations[currentPhoneNumber][0];
+            } else {
+                initialLocation = generateRandomOstimLocation();
+            }
+            locationHistory[currentPhoneNumber] = initialLocation;
+            
+            document.getElementById('trackedNumber').textContent = currentPhoneNumber;
+            document.getElementById('profilePicture').src = getProfilePictureUrl(currentPhoneNumber);
+            showAppScreen();
+            
+            // Initial UI update and starting the simulation
+            updateUI(initialLocation, new Date().toLocaleString('tr-TR'));
+            clearInterval(simulationInterval);
+            simulationInterval = setInterval(simulateVehicleMovement, 3600000);
+        };
+        
+        const recenterMapToLocation = (lat, lng, zoom) => {
+            if (map) {
+                const newPosition = [lat, lng];
+                vehicleMarker.setLatLng(newPosition);
+                map.flyTo(newPosition, zoom, {
+                    animate: true,
+                    duration: 1.5
+                });
+            }
+        };
 
-            document.getElementById('trackedNumber').textContent = currentPhoneNumber;
-            document.getElementById('profilePicture').src = getProfilePictureUrl(currentPhoneNumber);
-            showAppScreen();
-            
-            // Initial UI update and starting the simulation
-            updateUI(initialLocation, new Date().toLocaleString('tr-TR'));
-            clearInterval(simulationInterval);
-            simulationInterval = setInterval(simulateVehicleMovement, 3600000);
-        };
-        
-        const recenterMapToLocation = (lat, lng, zoom) => {
-            if (map) {
-                const newPosition = [lat, lng];
-                vehicleMarker.setLatLng(newPosition);
-                map.flyTo(newPosition, zoom, {
-                    animate: true,
-                    duration: 1.5
-                });
-            }
-        };
+        const stopTracking = () => {
+            clearInterval(simulationInterval);
+            currentPhoneNumber = null;
+            isAdminLoggedIn = false;
+            showAdminLoginScreen();
+        };
 
-        const stopTracking = () => {
-            clearInterval(simulationInterval);
-            currentPhoneNumber = null;
-            isAdminLoggedIn = false;
-            showAdminLoginScreen();
-        };
-
-        const recenterMap = () => {
-            if (vehicleMarker && map) {
-                const currentLatLng = vehicleMarker.getLatLng();
-                map.flyTo(currentLatLng, map.getZoom(), {
-                    animate: true,
-                    duration: 1.5
-                });
-            }
-        };
-        
-        window.onload = () => {
-            initMap();
-            setupCountryPicker();
-            document.getElementById('adminLoginBtn').addEventListener('click', handleAdminLogin);
-            document.getElementById('showLocationBtn').addEventListener('click', handleShowLocation);
-            document.getElementById('stopTrackingBtn').addEventListener('click', stopTracking);
-            document.getElementById('recenterBtn').addEventListener('click', recenterMap);
-            document.getElementById('googleMapsBtn').addEventListener('click', openGoogleMaps);
-            showAdminLoginScreen();
-        };
-        
-        function openGoogleMaps() {
-            const lat = vehicleMarker.getLatLng().lat;
-            const lng = vehicleMarker.getLatLng().lng;
-            const url = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
-            window.open(url, '_blank');
-        }
-    </script>
-</body>
-</html>
-<!doctype html>
-<html lang="tr">
-<head>
-  <meta charset="utf-8">
-  <title>Sağ tık engelleme</title>
-</head>
-<body>
-  <p>Bu sayfada sağ tık devre dışı.</p>
-
-  <script>
-    document.addEventListener('contextmenu', function(e) {
-      e.preventDefault();
-    });
-  </script>
+        const recenterMap = () => {
+            if (vehicleMarker && map) {
+                const currentLatLng = vehicleMarker.getLatLng();
+                map.flyTo(currentLatLng, map.getZoom(), {
+                    animate: true,
+                    duration: 1.5
+                });
+            }
+        };
+        
+        window.onload = () => {
+            initMap();
+            setupCountryPicker();
+            document.getElementById('adminLoginBtn').addEventListener('click', handleAdminLogin);
+            document.getElementById('showLocationBtn').addEventListener('click', handleShowLocation);
+            document.getElementById('stopTrackingBtn').addEventListener('click', stopTracking);
+            document.getElementById('recenterBtn').addEventListener('click', recenterMap);
+            document.getElementById('googleMapsBtn').addEventListener('click', openGoogleMaps);
+            showAdminLoginScreen();
+        };
+        
+        function openGoogleMaps() {
+            const lat = vehicleMarker.getLatLng().lat;
+            const lng = vehicleMarker.getLatLng().lng;
+            const url = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
+            window.open(url, '_blank');
+        }
+    </script>
 </body>
 </html>
