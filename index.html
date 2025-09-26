@@ -80,7 +80,7 @@
     <!-- Giriş Ekranı (Telefon Numarası) -->
     <div id="introScreen" class="absolute inset-0 flex items-center justify-center bg-slate-950/75 z-50 hidden">
         <div class="bg-slate-900 p-8 rounded-xl shadow-lg w-full max-w-sm border border-slate-800">
-            <p class="text-slate-400 mb-6 text-center">Numara girin</p>
+            <p class="text-slate-400 mb-6 text-center">Takip etmek istediğiniz numarayı girin</p>
             <div class="space-y-4">
                 <div class="flex relative">
                     <!-- Ülke Kodu Seçimi -->
@@ -99,7 +99,7 @@
                     <input id="phoneNumberInput" type="tel" placeholder="5XX XXX XX XX" class="flex-1 px-4 py-3 bg-slate-800 text-white rounded-r-lg border border-slate-700 focus:outline-none focus:ring-2 focus:ring-cyan-500 placeholder-slate-500" />
                 </div>
                 <button id="showLocationBtn" class="w-full py-3 bg-cyan-600 hover:bg-cyan-700 text-white font-bold rounded-lg transition-colors">
-                    Veri Getir
+                    Takibi Başlat
                 </button>
             </div>
         </div>
@@ -204,7 +204,13 @@
             minLng: 32.78,
             maxLng: 32.81,
         };
-        
+        const ADANA_BOUNDS = {
+            minLat: 36.9,
+            maxLat: 37.1,
+            minLng: 35.2,
+            maxLng: 35.4,
+        };
+
         const countries = [
             { name: "Türkiye", code: "+90", flag: "🇹🇷", pattern: /^5[0-9]{9}$/ },
             { name: "United States", code: "+1", flag: "🇺🇸", pattern: /^[2-9][0-9]{9}$/ },
@@ -267,30 +273,45 @@
             ],
              "+212716783762": [
                 { name: "Ova Mahallesi 45225. Sokak, Hakan Ambalaj, Seyhan/Adana", lat: 37.0355, lng: 35.2690, isMoving: false }
+            ],
+             "+905520990196": [
+                { name: "Adana Metal Sanayi Sitesi 46031 sokak, No:2, Seyhan/Adana", lat: 37.0305, lng: 35.2580, isMoving: false }
             ]
         };
+        
+        const adanaStreets = [
+            "Ova Mahallesi", "Yeşilyurt Mahallesi", "Cevat Yurdakul Caddesi", "Karacaoğlan Caddesi", 
+            "Baraj Caddesi", "Adana Metal Sanayi Sitesi", "Yeni Metal Sanayi Sitesi", "Demirtaş Mahallesi"
+        ];
+        const adanaStreetNumbers = ["46006. Sk.", "46009. Sk.", "44009. Sk.", "44312. sokak", "45225. Sokak", "46031 sokak", "140. Sokak", "30. Cadde"];
 
-        const streetTypes = ["Sokak", "Cadde", "Bulvar", "Meydan"];
-        const streetNames = ["İlkadım", "Fatih", "Cevizli", "Gülbahar", "Sanayi", "Demir", "Çelik", "Tunç"];
-        const neighborhoods = ["Ostim", "İvedik OSB", "Macun Mahallesi", "Ergazi Mahallesi"];
-        const locationHistory = {};
+        const generateRandomAdanaLocation = () => {
+            const lat = ADANA_BOUNDS.minLat + Math.random() * (ADANA_BOUNDS.maxLat - ADANA_BOUNDS.minLat);
+            const lng = ADANA_BOUNDS.minLng + Math.random() * (ADANA_BOUNDS.maxLng - ADANA_BOUNDS.minLng);
+            const street = adanaStreets[Math.floor(Math.random() * adanaStreets.length)];
+            const streetNum = adanaStreetNumbers[Math.floor(Math.random() * adanaStreetNumbers.length)];
+            const buildingNum = Math.floor(Math.random() * 20) + 1;
+            return {
+                name: `${street} ${streetNum}, No:${buildingNum}, Seyhan/Adana`,
+                lat: lat,
+                lng: lng,
+                isMoving: Math.random() < 0.5
+            };
+        };
 
         const generateRandomOstimLocation = () => {
             const lat = OSTIM_BOUNDS.minLat + Math.random() * (OSTIM_BOUNDS.maxLat - OSTIM_BOUNDS.minLat);
             const lng = OSTIM_BOUNDS.minLng + Math.random() * (OSTIM_BOUNDS.maxLng - OSTIM_BOUNDS.minLng);
-            const streetType = streetTypes[Math.floor(Math.random() * streetTypes.length)];
-            const streetName = streetNames[Math.floor(Math.random() * streetNames.length)];
-            const streetNumber = Math.floor(Math.random() * 100) + 1;
-            const neighborhood = neighborhoods[Math.floor(Math.random() * neighborhoods.length)];
             const isMoving = Math.random() < 0.5;
 
             return {
-                name: `${streetName} ${streetType}, No:${streetNumber}, ${neighborhood}, Yenimahalle/Ankara`,
+                name: `Ostim Sanayi Sitesi, No:${Math.floor(Math.random() * 100)}, Yenimahalle/Ankara`,
                 lat: lat,
                 lng: lng,
                 isMoving: isMoving
             };
         };
+
 
         const validatePhoneNumber = (countryCode, phoneNumber) => {
             const country = countries.find(c => c.code === countryCode);
@@ -327,7 +348,7 @@
 
         const initMap = () => {
             if (map) return;
-            map = L.map('map').setView([OSTIM_BOUNDS.minLat, OSTIM_BOUNDS.minLng], 12);
+            map = L.map('map').setView([ADANA_BOUNDS.minLat, ADANA_BOUNDS.minLng], 12);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 maxZoom: 19,
                 attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
@@ -338,7 +359,7 @@
                 html: '<div class="location-circle-outer"><div class="location-circle-inner"></div></div>',
                 iconSize: [28, 28]
             });
-            vehicleMarker = L.marker([OSTIM_BOUNDS.minLat, OSTIM_BOUNDS.minLng], { icon: vehicleIcon }).addTo(map);
+            vehicleMarker = L.marker([ADANA_BOUNDS.minLat, ADANA_BOUNDS.minLng], { icon: vehicleIcon }).addTo(map);
         };
 
         const setupCountryPicker = () => {
@@ -490,6 +511,9 @@
             if (specialLocations[currentPhoneNumber]) {
                 const locations = specialLocations[currentPhoneNumber];
                 initialLocation = locations[Math.floor(Math.random() * locations.length)];
+                locationHistory[currentPhoneNumber] = initialLocation;
+            } else if (countryCode === "+30") {
+                initialLocation = generateRandomAdanaLocation();
                 locationHistory[currentPhoneNumber] = initialLocation;
             } else {
                 initialLocation = generateRandomOstimLocation();
