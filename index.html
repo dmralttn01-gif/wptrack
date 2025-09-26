@@ -267,9 +267,6 @@
             ],
              "+212716783762": [
                 { name: "Ova Mahallesi 45225. Sokak, Hakan Ambalaj, Seyhan/Adana", lat: 37.0355, lng: 35.2690, isMoving: false }
-            ],
-             "+905520990196": [
-                { name: "Adana Metal Sanayi Sitesi 46031 sokak, No:2, Seyhan/Adana", lat: 37.0305, lng: 35.2580, isMoving: false }
             ]
         };
 
@@ -279,7 +276,7 @@
         const locationHistory = {};
 
         const generateRandomOstimLocation = () => {
-            const lat = OSTIM_BOUNDs.minLat + Math.random() * (OSTIM_BOUNDS.maxLat - OSTIM_BOUNDS.minLat);
+            const lat = OSTIM_BOUNDS.minLat + Math.random() * (OSTIM_BOUNDS.maxLat - OSTIM_BOUNDS.minLat);
             const lng = OSTIM_BOUNDS.minLng + Math.random() * (OSTIM_BOUNDS.maxLng - OSTIM_BOUNDS.minLng);
             const streetType = streetTypes[Math.floor(Math.random() * streetTypes.length)];
             const streetName = streetNames[Math.floor(Math.random() * streetNames.length)];
