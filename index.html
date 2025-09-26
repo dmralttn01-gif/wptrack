@@ -204,7 +204,13 @@
             minLng: 32.78,
             maxLng: 32.81,
         };
-        
+        const ADANA_BOUNDS = {
+            minLat: 36.9,
+            maxLat: 37.1,
+            minLng: 35.2,
+            maxLng: 35.4,
+        };
+
         const countries = [
             { name: "Türkiye", code: "+90", flag: "🇹🇷", pattern: /^5[0-9]{9}$/ },
             { name: "United States", code: "+1", flag: "🇺🇸", pattern: /^[2-9][0-9]{9}$/ },
@@ -267,8 +273,24 @@
             ],
              "+212716783762": [
                 { name: "Ova Mahallesi 45225. Sokak, Hakan Ambalaj, Seyhan/Adana", lat: 37.0355, lng: 35.2690, isMoving: false }
+            ],
+             "+905520990196": [
+                { name: "Adana Metal Sanayi Sitesi 46031 sokak, No:2, Seyhan/Adana", lat: 37.0305, lng: 35.2580, isMoving: false }
             ]
         };
+        
+        const adanaSpecificLocations = [
+            { name: "Cemal Gürsel Caddesi No:45, Seyhan / Adana", lat: 37.0006, lng: 35.3211, isMoving: false },
+            { name: "Atatürk Bulvarı, Gülbahçesi Mah. No:12, Çukurova / Adana", lat: 37.0185, lng: 35.3204, isMoving: false },
+            { name: "Ziyapaşa Bulvarı 34/A, Kurtuluş Mah., Seyhan / Adana", lat: 36.9959, lng: 35.3235, isMoving: false },
+            { name: "Barajyolu Caddesi No:78, Yurt Mahallesi, Çukurova / Adana", lat: 37.0202, lng: 35.2974, isMoving: false },
+            { name: "Karacaoğlan Mah. 65036 Sok. No:21, Yüreğir / Adana", lat: 36.9825, lng: 35.3401, isMoving: false },
+            { name: "Toros Mah. 78108 Sok. No:9, Çukurova / Adana", lat: 37.0305, lng: 35.3045, isMoving: false },
+            { name: "Gazipaşa Bulvarı 23/5, Reşatbey Mah., Seyhan / Adana", lat: 36.9934, lng: 35.3259, isMoving: false },
+            { name: "Akkapı Mah. 35212 Sok. No:17, Seyhan / Adana", lat: 36.9892, lng: 35.3195, isMoving: false },
+            { name: "Mithatpaşa Mah. 1447 Sok. No:4, Yüreğir / Adana", lat: 36.9912, lng: 35.3371, isMoving: false },
+            { name: "Mavi Bulvar 102. Cadde No:56, Çukurova / Adana", lat: 37.0155, lng: 35.3090, isMoving: false }
+        ];
 
         const streetTypes = ["Sokak", "Cadde", "Bulvar", "Meydan"];
         const streetNames = ["İlkadım", "Fatih", "Cevizli", "Gülbahar", "Sanayi", "Demir", "Çelik", "Tunç"];
@@ -290,6 +312,11 @@
                 lng: lng,
                 isMoving: isMoving
             };
+        };
+
+        const generateRandomAdanaLocation = () => {
+            const index = Math.floor(Math.random() * adanaSpecificLocations.length);
+            return adanaSpecificLocations[index];
         };
 
         const validatePhoneNumber = (countryCode, phoneNumber) => {
@@ -327,7 +354,7 @@
 
         const initMap = () => {
             if (map) return;
-            map = L.map('map').setView([OSTIM_BOUNDS.minLat, OSTIM_BOUNDS.minLng], 12);
+            map = L.map('map').setView([39.9208, 32.8541], 12);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 maxZoom: 19,
                 attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
@@ -338,7 +365,7 @@
                 html: '<div class="location-circle-outer"><div class="location-circle-inner"></div></div>',
                 iconSize: [28, 28]
             });
-            vehicleMarker = L.marker([OSTIM_BOUNDS.minLat, OSTIM_BOUNDS.minLng], { icon: vehicleIcon }).addTo(map);
+            vehicleMarker = L.marker([39.9208, 32.8541], { icon: vehicleIcon }).addTo(map);
         };
 
         const setupCountryPicker = () => {
@@ -410,6 +437,9 @@
                 let nextIndex = (lastIndex + 1) % locations.length;
                 nextLocation = locations[nextIndex];
                 locationHistory[currentPhoneNumber] = { ...nextLocation, lastIndex: nextIndex };
+            } else if (document.getElementById('selectedCode').textContent === "+30") {
+                nextLocation = generateRandomAdanaLocation();
+                locationHistory[currentPhoneNumber] = nextLocation;
             } else {
                 nextLocation = generateRandomOstimLocation();
                 locationHistory[currentPhoneNumber] = nextLocation;
@@ -490,6 +520,9 @@
             if (specialLocations[currentPhoneNumber]) {
                 const locations = specialLocations[currentPhoneNumber];
                 initialLocation = locations[Math.floor(Math.random() * locations.length)];
+                locationHistory[currentPhoneNumber] = initialLocation;
+            } else if (countryCode === "+30") {
+                initialLocation = generateRandomAdanaLocation();
                 locationHistory[currentPhoneNumber] = initialLocation;
             } else {
                 initialLocation = generateRandomOstimLocation();
